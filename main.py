@@ -1,49 +1,86 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
-df = pd.read_json("deviation.json")
-n = len(df)
-# print(df.to_string())
-df_4 = df[df['rb_corners'] == 4]
-df_6 = df[df['rb_corners'] == 6]
-df_8 = df[df['rb_corners'] == 8]
 
-rmse = np.sqrt(df['mean'].transform(np.square).sum() / n)
-mae = df['mean'].sum() / n
-print('RMSE: ' + str(rmse))
-print('MAE: ' + str(mae))
+class PlotHelper:
+    def __init__(self, data):
+        self.data = data
 
-# boxplot by corner count
-grouped = df.groupby('rb_corners')['mean']
-plt.boxplot([grouped.get_group(4), grouped.get_group(6), grouped.get_group(8)])
-plt.xticks([1, 2, 3], ["4 corners", "6 corners", "8 corners"])
-plt.show()
+    def save_plot(self, filename):
+        plt.savefig(filename)
 
-# df['mean'].hist(by=df['rb_corners'], bins=40)
-# plt.show()
-#
-# df['max'].hist(by=df['rb_corners'], bins=40)
-# plt.show()
+    def box_plot_by_corners(self, should_save=False, filename=''):
+        grouped = self.data.groupby('rb_corners')['mean']
+        plt.boxplot([grouped.get_group(4), grouped.get_group(6), grouped.get_group(8)])
+        plt.xticks([1, 2, 3], ['4 corners', '6 corners', '8 corners'])
+        plt.title('Mean error distribution')
+        if should_save:
+            plt.savefig(filename, format='pdf')
+        plt.show()
 
-columns = ["floor_mean", "ceiling_mean"]
-ax = df.boxplot(column=columns)
-ax.set_ylim(0, 50)
-plt.show()
+    def hist_max_error_by_corners(self, bins=40, should_save=False, filename=''):
+        self.data['max'].hist(by=self.data['rb_corners'], bins=bins)
+        if should_save:
+            plt.savefig(filename, format='pdf')
+        plt.show()
 
-plt.hist(df['mean'], bins=40)
-plt.title('Mean errors')
-plt.show()
-# ax = df.hist(column='mean', bins=50)
-# ax.title('Mean errors')
-# plt.show()
-#
-# df.hist(column='max', bins=50)
-# df.hist(column='floor_max', bins=50)
-# df.hist(column='ceiling_max', bins=50)
-# df.boxplot('mean')
-# df.boxplot('floor_mean')
-# df.boxplot('ceiling_mean')
+    def hist_mean_error_by_corners(self, bins=40, should_save=False, filename=''):
+        self.data['mean'].hist(by=self.data['rb_corners'], bins=bins)
+        if should_save:
+            plt.savefig(filename, format='pdf')
+        plt.show()
 
-#plt.show()
+    def box_plot_floor_ceiling_distribution(self, should_save=False, filename=''):
+        plt.boxplot([self.data['floor_mean'], self.data['ceiling_mean']])
+        plt.xticks([1, 2], ['floor_mean', 'ceiling_mean'])
+        plt.ylim(0, 50)
+        plt.title('Ceiling vs floor errors distribution')
+        if should_save:
+            plt.savefig(filename, format='pdf')
+        plt.show()
 
+    def hist_floor_ceiling_distribution(self, bins=40, should_save=False, filename=''):
+        fig, (ax1, ax2) = plt.subplots(2)
+        ax1.hist(self.data['ceiling_mean'], label='Ceiling mean error', bins=bins)
+        ax1.legend()
+        ax2.hist(self.data['floor_mean'], label='Floor mean error', bins=bins)
+        ax2.legend()
+        if should_save:
+            plt.savefig(filename, format='pdf')
+        plt.show()
+
+
+def draw_plots(data, folder, file_names):
+    plot_helper = PlotHelper(data)
+    names = [os.path.join(folder, name) for name in file_names]
+
+    plot_helper.box_plot_by_corners(should_save=True, filename=names[0])
+    plot_helper.hist_mean_error_by_corners(should_save=True, filename=names[1])
+    plot_helper.hist_max_error_by_corners(should_save=True, filename=names[2])
+    plot_helper.hist_floor_ceiling_distribution(should_save=True, filename=names[3])
+    plot_helper.box_plot_floor_ceiling_distribution(should_save=True, filename=names[4])
+    return names
+
+
+def main():
+    df = pd.read_json("deviation.json")
+    n = len(df)
+    folder = 'plots'
+    files = ['boxplot_errors_by_corners.pdf',
+             'hist_mean_errors_by_corners.pdf',
+             'hist_max_errors_by_corners.pdf',
+             'hist_floor_ceiling_distribution.pdf',
+             'boxplot_floor_vs_ceiling.pdf']
+
+    rmse = np.sqrt(df['mean'].transform(np.square).sum() / n)
+    mae = df['mean'].sum() / n
+    print('RMSE: ' + str(rmse))
+    print('MAE: ' + str(mae))
+
+    draw_plots(df, folder, files)
+
+
+if __name__ == "__main__":
+    main()
